@@ -2,9 +2,10 @@
 
 import sys
 import os
-import  subprocess
+import subprocess
 import time
 import shlex
+
 
 # 第三方SDK文件夹目录的父级目录
 third_SDK_Root_Path=''
