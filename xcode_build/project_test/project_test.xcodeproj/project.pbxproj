@@ -288,13 +288,17 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer: nanxing liao (H6KAK88X9G)";
 				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = 73889W623Z;
+				FRAMEWORK_SEARCH_PATHS = sdk/sdsf;
+				HEADER_SEARCH_PATHS = sdk/sdsf;
 				INFOPLIST_FILE = project_test/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = sdk/sdsf;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.star.project-test";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = project_test_dev_provisioning_profile;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -306,13 +310,17 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution: nanxing liao (73889W623Z)";
 				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = 73889W623Z;
+				FRAMEWORK_SEARCH_PATHS = sdk/sdsf;
+				HEADER_SEARCH_PATHS = sdk/sdsf;
 				INFOPLIST_FILE = project_test/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = sdk/sdsf;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.star.project-test";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = project_test_dis_provisioning_profile;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
