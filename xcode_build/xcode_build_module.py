@@ -87,16 +87,23 @@ class XCodeBuild(object):
         return
     
     def exportArchive(self,archivePath):
+        result_exportDirectory=None
         exportDirectory=self.buildExportDirectory()
         exportCmd = "xcodebuild -exportArchive -archivePath %s -exportPath %s PROVISIONING_PROFILE='%s' CODE_SIGN_IDENTITY='%s' -exportOptionsPlist %s" %(archivePath, exportDirectory,self.provisioning_profile,self.certificateName,self.exportOptionPlist)
         process = subprocess.Popen(exportCmd, shell=True)
         (stdoutdata, stderrdata) = process.communicate()
         signReturnCode = process.returncode
+        code=None
         if signReturnCode != 0:
+            code=-1
             print 'ipa打包失败!'
         else:
+            result_exportDirectory=exportDirectory
+            code=0
             print 'ipa打包成功，路径在:%s'%(exportDirectory)
             # os.system('open %s'%(exportDirectory))
+
+        return code,result_exportDirectory
 
     def buildArchivePath(self,tempName):
         archiveName = "%s.xcarchive" %(tempName)
@@ -206,11 +213,14 @@ class XCodeBuild(object):
         process = subprocess.Popen(buildCmd, shell=True)
         (stdoutdata, stderrdata) = process.communicate()
         signReturnCode = process.returncode
+        resultMsg=None
+        code=None
         if signReturnCode != 0:
             print 'ipabuild失败!'
+            code=-1
         else:
-            self.exportArchive(archivePath)
-        return
+            code,resultMsg=self.exportArchive(archivePath)
+        return code,resultMsg
 
     # 启用沙盒文件访问
     def setUIFileSharingEnabled(self):
@@ -421,11 +431,23 @@ class XCodeBuild(object):
         #资源文件.png
         self.project.add_file(sDKResourcePath+'/UMVideo.bundle', force=False,  parent=self.frameworksGroupID,file_options=file_options,tree='SDKROOT')
         pass
-
     
+    # TODO: 这个方法用来查询sdk文件夹下的库，资源等数据，以来修改工程配置
+    def updateProjectSetsForSDK(self,sdk_path):
+        pass
+
+
+        pass
     def embedAssignSDK(self,sdk_name):
         # 初始化
-        pbxproj=self.xcodeProjectRootPath+'/project_test.xcodeproj/project.pbxproj';
+        pbxproj=self.xcodeProjectRootPath+'/project_test.xcodeproj/project.pbxproj'
+        #每次从壳工程备份里拷贝源文件到这里，再加载
+        try:
+            src_path=os.path.join(os.getcwd(),'project.pbxproj')
+            shutil.copy(src_path,pbxproj)
+        except Exception,e:
+            print e
+        
         self.project = XcodeProject.load(pbxproj)
         frameworksGroupID = None
         textfile = open(pbxproj, 'r')
