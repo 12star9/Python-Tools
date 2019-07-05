@@ -35,7 +35,7 @@ def read_system_dependency():
 def clean_up():
     os.system('cd %s'%(current_Path))
     os.system('rm -rf build dist')
-    os.system('rm -rf setup.py')
+    # os.system('rm -rf setup.py')
     
 def generate_main(main_name='gui_main'):
 
