@@ -10,8 +10,6 @@ import commands
 import subprocess
 import shutil
 import re
-#用来操作XCode工程配置，以便进行多项目不同配置打包！
-# from mod_pbxproj import XcodeProject
 from pbxproj import XcodeProject
 from pbxproj.pbxextensions.ProjectFiles import FileOptions
 
@@ -22,17 +20,16 @@ mobileprovision_path="/Users/"+getpass.getuser()+"/Library/MobileDevice/Provisio
 
 class XCodeBuild(object):
     
-    def __init__(self,xcodeProjectRootPath,infoPlistFilePath,isWorkSpace,targetName,configurationSet,certificateName,provisioning_profile_file,exportOptionPlist):
+    def __init__(self,xcodeProjectRootPath,infoPlistFilePath,isWorkSpace,targetName,configurationSet,certificateName,provisioning_profile_file,base_exportOptionPlist):
         self.xcodeProjectRootPath = xcodeProjectRootPath
         self.infoPlistFilePath=infoPlistFilePath
         self.isWorkSpace=isWorkSpace
         self.targetName=targetName
-        self.exportOptionPlist=exportOptionPlist
+        self.exportOptionPlist=base_exportOptionPlist
         #编译配置
         self.configuration_set=configurationSet
         #证书名
         self.certificateName =certificateName
-        #mobileprovision文件先用Xcode打开一次，不然XCodeBuild会找不到
         #开始获取.mobileprovision文件的uuid值
         (status, provisioning_profile_temp) = commands.getstatusoutput("/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<< $(/usr/bin/security cms -D -i %s)" %(provisioning_profile_file))
         self.provisioning_profile=provisioning_profile_temp
@@ -40,6 +37,17 @@ class XCodeBuild(object):
         print self.provisioning_profile
         print "开始打开.mobileprovision文件位置"
         # os.system("open %s"%(provisioning_profile_file))
+    
+    def updateExportOptionPlistData(self):
+        #根据包名更新exportOptions.plist文件信息
+        #先复制一份，修改好用这份新的
+        new_exportOption_plist= '%s_%s'%(self.app_display_name,self.app_bundle_id)+'_'+self.exportOptionPlist.split('/')[-1]
+        shutil.copyfile(self.exportOptionPlist,new_exportOption_plist)
+        self.current_exportOption_plist=new_exportOption_plist
+        cmd='/usr/libexec/PlistBuddy -c "Add :provisioningProfiles:%s string %s" %s'%(self.app_bundle_id,self.provisioning_profile,new_exportOption_plist)
+        os.system(cmd)
+        os.system('/usr/libexec/PlistBuddy -c "Set :provisioningProfiles:%s %s" %s'%(self.app_bundle_id,self.provisioning_profile,new_exportOption_plist))
+        pass
         
     def cleanPro(self):
         if self.isWorkSpace:
@@ -89,11 +97,22 @@ class XCodeBuild(object):
     def exportArchive(self,archivePath):
         result_exportDirectory=None
         exportDirectory=self.buildExportDirectory()
-        exportCmd = "xcodebuild -exportArchive -archivePath %s -exportPath %s PROVISIONING_PROFILE='%s' CODE_SIGN_IDENTITY='%s' -exportOptionsPlist %s" %(archivePath, exportDirectory,self.provisioning_profile,self.certificateName,self.exportOptionPlist)
+        exportCmd = "xcodebuild -exportArchive -archivePath %s -exportPath %s PROVISIONING_PROFILE='%s' CODE_SIGN_IDENTITY='%s' -exportOptionsPlist %s" %(archivePath, exportDirectory,self.provisioning_profile,self.certificateName,self.current_exportOption_plist)
         process = subprocess.Popen(exportCmd, shell=True)
         (stdoutdata, stderrdata) = process.communicate()
         signReturnCode = process.returncode
         code=None
+        #打包后把使用的临时exportOptionPlist和.xcarchive进行删除
+        try:
+            os.remove(self.current_exportOption_plist)
+            cleanCmd = "rm -r %s" %(archivePath)
+            os.system(cleanCmd)
+            build_path=self.xcodeProjectRootPath+"/build"
+            cleanCmd = "rm -r %s" %(build_path)
+            process = subprocess.Popen(cleanCmd, shell = True)
+            process.wait()
+        except Exception,e:
+            print e
         if signReturnCode != 0:
             code=-1
             print 'ipa打包失败!'
@@ -102,7 +121,6 @@ class XCodeBuild(object):
             code=0
             print 'ipa打包成功，路径在:%s'%(exportDirectory)
             # os.system('open %s'%(exportDirectory))
-
         return code,result_exportDirectory
 
     def buildArchivePath(self,tempName):
@@ -113,7 +131,15 @@ class XCodeBuild(object):
         process.wait()
         return archivePath
 
-    # 
+    def updateMobileProvisionProfile(self,file_path):
+        #重命名
+        (status, provisioning_profile_temp) = commands.getstatusoutput("/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<< $(/usr/bin/security cms -D -i %s)" %(file_path))
+        newname=provisioning_profile_temp+'.mobileprovision'
+        # oldname=file_path.split('/')[-1]
+        newfile=os.path.join(mobileprovision_path,newname)
+        if not os.path.exists(newfile):
+            shutil.copyfile(file_path,newfile)
+    
     def buildExportDirectory(self):
         dateCmd = 'date "+%Y-%m-%d_%H-%M-%S"'
         process = subprocess.Popen(dateCmd, stdout=subprocess.PIPE, shell=True)
@@ -145,10 +171,10 @@ class XCodeBuild(object):
         # else:
         #     print 'install app success!'
         
-
     # def startApp(device_udid,app_bundle_id):
     #     (status,results)=commands.getstatusoutput("sudo xcrun simctl launch %s '%s'" %(device_udid,app_bundle_id));
     #     print status, results
+
     def isNone(self,para):
         if para == None or len(para) == 0:
             return True
@@ -159,7 +185,6 @@ class XCodeBuild(object):
         os.system("chmod -R 777 %s"%(self.xcodeProjectRootPath))
         return
 
-    
     def eachFile(self,filepath,postfix):
         datas = []
         fileNames = os.listdir(filepath)
@@ -189,7 +214,6 @@ class XCodeBuild(object):
         return
 
     def buildApp(self):
-        
         files_list=self.scan_files(self.xcodeProjectRootPath,".xcodeproj")
         temp = -1
         for k in range(len(files_list)):
@@ -234,7 +258,6 @@ class XCodeBuild(object):
 
     # 设置参与编译的.m文件的compiler-flag为'-fno-objc-arc'
     def modifyXCodeFileCompilerFlag(self,filePath):
-        # filePath=os.path.join(relativeFolderPath,mmFilePath)
         strongFileOptions=FileOptions(weak=False,embed_framework=False,code_sign_on_copy=False)
         addFileReference= self.project.add_file(filePath,  force=False,  file_options=strongFileOptions, parent=self.frameworksGroupID, tree='SDKROOT')
         files=self.project.get_build_files_for_file(addFileReference[0].fileRef)
@@ -252,22 +275,22 @@ class XCodeBuild(object):
             '/usr/libexec/PlistBuddy -c "Set :NSAppTransportSecurity:NSExceptionDomains:%s:NSTemporaryExceptionAllowsInsecureHTTPLoads True" %s' % (domainAddress,
             self.infoPlistFilePath))
 
-
     def addNSAppTransportSecurity(self):
         os.system('/usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool True" %s'%(infoPlistFilePath))
         os.system('/usr/libexec/PlistBuddy -c "Set :NSAppTransportSecurity:NSAllowsArbitraryLoads True" %s'%(infoPlistFilePath))
 
+    def updateAppBundleId(self,app_bundle_id):
+        self.app_bundle_id=app_bundle_id
+        os.system('/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier %s" %s'%(app_bundle_id,self.infoPlistFilePath))
+        pass
     def updateAppDisplayName(self,displayName):
+        self.app_display_name=displayName
+        os.system('/usr/libexec/PlistBuddy -c "Set :CFBundleName %s" %s'%(displayName,self.infoPlistFilePath))
+        os.system('/usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string %s" %s'%(displayName,self.infoPlistFilePath))
         os.system('/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName %s" %s'%(displayName,self.infoPlistFilePath))
-        # os.system('CFBundleDisplayName')
-
 
     def setProjectAppDisplayName(self,displayName):
-        self.project = XcodeProject.load(self.xcodeProjectRootPath+'/project_test.xcodeproj/project.pbxproj')
-        # backup_file = project.backup()
         updateAppDisplayName(displayName)
-        self.project.save()
-        # project.save('project_test/project-%s.pbxproj'%(displayName))
     
     def automaticIntegrationCodeInDidFinishLaunchingWithOptions(filePath,insert_header_file_code='#import "SDK.h"',insert_code=u'[[SDK sharedInstance] show:@\"%s\" withWindow:self.window];\n' %("123")):
         try:
@@ -323,7 +346,6 @@ class XCodeBuild(object):
             print "please check the error", e
             return 1
 
-
     def addSystemFrameworkOrDylib(self,project):
         strongFileOptions=FileOptions(weak=False,embed_framework=False,code_sign_on_copy=False)
         frameworksGroupID=self.frameworksGroupID
@@ -371,7 +393,6 @@ class XCodeBuild(object):
         project.add_file('System/Library/Frameworks/WebKit.framework', force=False, file_options=strongFileOptions,   parent=frameworksGroupID,tree='SDKROOT')
         project.add_file('System/Library/Frameworks/AVKit.framework',  force=False, parent=frameworksGroupID,file_options=file_options,tree='SDKROOT')  
                 
-
     def add_Adcolony(self):
         parent_path = os.path.dirname(self.xcodeProjectRootPath)
         sDKResourcePath= os.path.join(parent_path, 'sdks/Adcolony')
@@ -431,23 +452,113 @@ class XCodeBuild(object):
         #资源文件.png
         self.project.add_file(sDKResourcePath+'/UMVideo.bundle', force=False,  parent=self.frameworksGroupID,file_options=file_options,tree='SDKROOT')
         pass
-    
-    # TODO: 这个方法用来查询sdk文件夹下的库，资源等数据，以来修改工程配置
+
+    #获取SDK的所有相关文件
+    def get_all_sdk_files(self,dir):
+        files_ = []
+        list = os.listdir(dir)
+        for i in range(0, len(list)):
+            path = os.path.join(dir, list[i])
+            if os.path.isdir(path):
+                #.bundle,.framework会被识别成目录，这里需要做下判断
+                if path.endswith('bundle') or path.endswith('framework'):
+                    files_.append(path)
+                    continue
+                else:
+                    files_.extend(self.get_all_sdk_files(path))
+            if os.path.isfile(path):
+                files_.append(path)
+        return files_
+
+    # 这个方法用来查询sdk文件夹下的库，资源等数据，以来修改工程配置
     def updateProjectSetsForSDK(self,sdk_path):
+        sdk_file_path=self.get_all_sdk_files(sdk_path)
+        framework_search_path=[]
+        library_search_path=[]
+        header_search_path=[]
+        for temp_path in sdk_file_path:
+            if temp_path.endswith('bundle'):
+                file_options = FileOptions(weak=False,embed_framework=False,code_sign_on_copy=False)
+                self.project.add_file(temp_path, force=False,  parent=self.frameworksGroupID,file_options=file_options,tree='SDKROOT')
+                pass
+            elif temp_path.endswith('framework'):
+                framework_search_path_temp=os.path.dirname(temp_path)
+                if not framework_search_path_temp in framework_search_path:
+                    framework_search_path.append(framework_search_path_temp)
+                #库文件.framework
+                mach_file_name=temp_path.split('/')[-1].split('.')[-2]
+                file_path= os.path.join(temp_path,mach_file_name)
+                #判断是否是动态库
+                process=subprocess.Popen('file %s'%(file_path),shell=True,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+                (stdoutdata, stderrdata) = process.communicate()
+                if 'dynamically' in stdoutdata:
+                    embed_framework_val=True
+                    code_sign_on_copy_val=True
+                else:
+                    embed_framework_val=False
+                    code_sign_on_copy_val=False
+                file_options = FileOptions(weak=False,embed_framework=embed_framework_val,code_sign_on_copy=code_sign_on_copy_val)
+                self.project.add_file(temp_path, force=False,  parent=self.frameworksGroupID,file_options=file_options,tree='SDKROOT')
+                pass
+            elif temp_path.endswith('h'):
+                header_search_path_temp=os.path.dirname(temp_path)
+                if not header_search_path_temp in header_search_path:
+                    header_search_path.append(header_search_path_temp)
+                pass
+            elif temp_path.endswith('m'):
+                #
+                strongFileOptions=FileOptions(weak=False,embed_framework=False,code_sign_on_copy=False)
+                addFileReference= self.project.add_file(temp_path,  force=False,  file_options=strongFileOptions, parent=self.frameworksGroupID, tree='SDKROOT')
+                #判断是否是非ARC编译,读取内容，看是否有....release]
+                fin = open(temp_path,'r')
+                result=None
+                is_not_arc=False
+                for eachLine in fin:
+                    if 'release]'in eachLine:
+                        is_not_arc=True
+                        break
+                fin.close()
+                if is_not_arc==True:
+                    files=self.project.get_build_files_for_file(addFileReference[0].fileRef)
+                    for f in files:
+                        f.add_compiler_flags('-fno-objc-arc')
+                pass
+            elif temp_path.endswith('a'):
+                library_search_path_temp=os.path.dirname(temp_path)
+                if not library_search_path_temp in library_search_path:
+                    library_search_path.append(library_search_path_temp)
+                file_options = FileOptions(weak=False,embed_framework=False,code_sign_on_copy=False)
+                self.project.add_file(temp_path, force=False,  parent=self.frameworksGroupID,file_options=file_options,tree='SDKROOT')
+                pass
+            #图片等资源文件
+            else:
+                file_options = FileOptions(weak=False,embed_framework=False,code_sign_on_copy=False)
+                self.project.add_file(temp_path, force=False,  parent=self.frameworksGroupID,file_options=file_options,tree='SDKROOT')
+                pass
+            pass
+        for temp_path in framework_search_path:
+            self.project.add_framework_search_paths([temp_path],recursive=True)
+        for temp_path in library_search_path:
+            self.project.add_library_search_paths([temp_path],recursive=True)
+        for temp_path in header_search_path:
+            self.project.add_header_search_paths([temp_path],recursive=True)
+        self.addSystemFrameworkOrDylib(self.project)
+        self.updateProjectSettings()
+        self.project.save()
         pass
 
-
-        pass
-    def embedAssignSDK(self,sdk_name):
+    def initProject(self):
         # 初始化
         pbxproj=self.xcodeProjectRootPath+'/project_test.xcodeproj/project.pbxproj'
+        infoPlistPath=self.xcodeProjectRootPath+'/project_test/Info.plist'
         #每次从壳工程备份里拷贝源文件到这里，再加载
         try:
             src_path=os.path.join(os.getcwd(),'project.pbxproj')
+            infPlist_Src_Path=os.path.join(os.getcwd(),'Info.plist')
             shutil.copy(src_path,pbxproj)
+            shutil.copy(infPlist_Src_Path,infoPlistPath)
         except Exception,e:
-            print e
-        
+            print e 
         self.project = XcodeProject.load(pbxproj)
         frameworksGroupID = None
         textfile = open(pbxproj, 'r')
@@ -460,6 +571,8 @@ class XCodeBuild(object):
         except:
             pass
         self.frameworksGroupID =self. project.get_or_create_group('Frameworks')
+
+    def embedAssignSDK(self,sdk_name):
         # 引入不同SDK，涉及框架引入，代码文件引入，资源文件引入
         sdk_functions={
             'Adcolony':lambda:self.add_Adcolony(),
@@ -474,7 +587,4 @@ class XCodeBuild(object):
         self.project.save()
         pass
         return
-
-    
-        
 
