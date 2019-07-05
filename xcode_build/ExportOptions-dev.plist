@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>compileBitcode</key>
+	<true/>
+	<key>destination</key>
+	<string>export</string>
+	<key>manifest</key>
+	<dict>
+		<key>appURL</key>
+		<string>https://www.stwxsite.com/app_url</string>
+		<key>displayImageURL</key>
+		<string>https://www.stwxsite.com/display-img-url</string>
+		<key>fullSizeImageURL</key>
+		<string>https://www.stwxsite.com/full-size.img-url</string>
+	</dict>
+	<key>method</key>
+	<string>development</string>
+	<key>signingCertificate</key>
+	<string>5C9D35E356D6889C51EA61AEA23F703ED6AE4ABB</string>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>stripSwiftSymbols</key>
+	<true/>
+	<key>teamID</key>
+	<string>73889W623Z</string>
+	<key>thinning</key>
+	<string>&lt;thin-for-all-variants&gt;</string>
+</dict>
+</plist>
