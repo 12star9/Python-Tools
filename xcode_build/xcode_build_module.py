@@ -233,7 +233,7 @@ class XCodeBuild(object):
         if self.isWorkSpace:
             buildCmd="cd %s;xcodebuild -workspace %s.xcworkspace -configuration '%s' -scheme %s PROVISIONING_PROFILE='%s' CODE_SIGN_IDENTITY='%s' -derivedDataPath build/ archive -archivePath %s -destination generic/platform=iOS"%(self.xcodeProjectRootPath,self.targetName,self.configuration_set,self.targetName,self.provisioning_profile,self.certificateName,archivePath)
         else:
-            buildCmd="cd %s;xcodebuild -target %s -configuration '%s' PROVISIONING_PROFILE='%s' CODE_SIGN_IDENTITY='%s' archive -archivePath %s -destination generic/platform=iOS"%(self.xcodeProjectRootPath,self.targetName,self.configuration_set,self.provisioning_profile,self.certificateName,archivePath)
+            buildCmd="cd %s;xcodebuild -target %s -configuration '%s' PROVISIONING_PROFILE='%s' CODE_SIGN_IDENTITY='%s' archive -archivePath %s -destination generic/platform=iOS -scheme %s"%(self.xcodeProjectRootPath,self.targetName,self.configuration_set,self.provisioning_profile,self.certificateName,archivePath,self.targetName)
         process = subprocess.Popen(buildCmd, shell=True)
         (stdoutdata, stderrdata) = process.communicate()
         signReturnCode = process.returncode
