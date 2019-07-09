@@ -1,0 +1,214 @@
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>
+             %page_title%
+        </title>
+        <style>
+            body 
+            { 
+                margin: 0px; 
+                font-family: Courier, monospace; 
+                font-size: 0.8em;
+            } 
+            table 
+            { 
+                width: 100%; 
+                /*border-collapse: collapse; */
+            } 
+                
+            tr { 
+                vertical-align:top; 
+            } 
+            tr:nth-child(odd) 
+            { 
+                background-color: #eeeeee; 
+            } 
+            td 
+            { 
+                padding: 2px
+                10px; 
+            } 
+            #footer 
+            { 
+                text-align: center; 
+                margin: 20px 0px; 
+                color: darkgray;
+                font-weight: bold; 
+               /* bottom: 5px;
+                position: fixed;;*/
+            } 
+            .error 
+            { 
+                color: red; 
+                font-weight: bold; 
+            }
+            .clearBtn
+            {
+                color: red; 
+                height:30px;
+                position:fixed;
+                bottom:5px;
+                /*top: 5px;*/
+                left:5px;
+            }
+            .pauseBtn
+            {
+                color: red; 
+                height:30px;
+                position:fixed;
+                bottom:5px;
+                /*top: 5px;*/
+                left:80px;
+            }
+        </style>
+        <script type="text/javascript">
+            var refreshDelay = 500;
+            var footerElement = null;
+            var isClearLog=false;
+            var isPauseLogPrint=false;
+            function updateTimestamp() {
+                var now = new Date();
+                footerElement.innerHTML = "最后更新时间为: " + now.toLocaleDateString() + " " + now.toLocaleTimeString();
+            }
+            function refresh() {
+
+				if(isPauseLogPrint)
+				{
+					updateTimestamp();
+                                setTimeout(refresh, refreshDelay);
+                                return;
+				}
+
+                if(isClearLog)
+                            {
+                                updateTimestamp();
+                                setTimeout(refresh, refreshDelay);
+                                return;
+                            }
+                var timeElement = document.getElementById("maxTime");
+                if(timeElement)
+                {
+                    var maxTime = timeElement.getAttribute("data-value");
+                    console.log("last maxTime:"+maxTime);
+                    timeElement.parentNode.removeChild(timeElement);
+                }
+                else
+                {
+                    return;
+                }
+                var xmlhttp = new XMLHttpRequest();
+                xmlhttp.onreadystatechange = function() {
+                    if (xmlhttp.readyState == 4) {
+                        if (xmlhttp.status == 200) {                           
+                            var contentElement = document.getElementById("content");
+                            var responseText=xmlhttp.responseText;
+                            console.log("responseText:"+responseText);
+                            console.log("origin:contentElement.innerHTML:"+contentElement.innerHTML);
+                            contentElement.innerHTML = contentElement.innerHTML + responseText;
+                            // 滚动到底部
+                            var tLogTable=document.getElementById("tLogTable");
+                            var c = window.document.body.scrollHeight;
+                            console.log("scrollHeight:"+c);
+                            window.scroll(0,c); 
+                            tLogTable.scrollTop = tLogTable.scrollHeight;
+                            console.log("lastupdate:contentElement.innerHTML:"+contentElement.innerHTML);
+                            updateTimestamp();
+                            setTimeout(refresh, refreshDelay);
+                        } else {
+                            footerElement.innerHTML = "<span class=\"error\">连接断开! 请刷新页面重试! 1秒后自动重试......</span>";
+                            updateTimestamp();
+                            setTimeout(refresh, 1000);
+                        }
+                    }
+                }
+                if(isClearLog)
+                    return;
+                xmlhttp.open("GET", "/index.html/log?after=" + maxTime, true);
+                xmlhttp.send();
+            }
+
+			function pauseLog()
+			{
+				if(isPauseLogPrint==false)
+				{
+					isPauseLogPrint=true;
+					var contentElement = document.getElementById("pauseBtnId");
+					contentElement.innerHTML="继续!";
+				}
+				else
+				{
+					isPauseLogPrint=false;
+					var contentElement = document.getElementById("pauseBtnId");
+					contentElement.innerHTML="暂停!";
+				}
+					
+			}
+
+            function clearLog()
+            {
+                var xmlhttp = new XMLHttpRequest();
+                var timeElement = document.getElementById("maxTime");
+                 var maxTime =0;
+                if(timeElement)
+                {
+					maxTime= timeElement.getAttribute("data-value");
+                }
+                xmlhttp.onreadystatechange = function() {
+                    if (xmlhttp.readyState == 4) {
+                        if (xmlhttp.status == 200) {
+                            // 清空信息，获取服务器返回来的数据!
+                            isClearLog=true;
+                            var contentElement = document.getElementById("content");
+                            var responseText=xmlhttp.responseText;
+                            console.log("clearLog==responseText:"+responseText);
+                            console.log("maxTime:"+maxTime);
+                            var timeElement = document.getElementById("maxTime");
+                            if(timeElement)
+                            {
+                                console.log("delete old timeElement!");
+                                timeElement.parentNode.removeChild(timeElement);
+                            }
+                            contentElement.innerHTML =responseText;
+                            isClearLog=false;
+                            updateTimestamp();
+                            setTimeout(refresh, refreshDelay);
+                        } 
+                    }
+                }
+                xmlhttp.open("GET", "/index.html/clearLog?after="+ maxTime, true);
+                xmlhttp.send();
+            }
+
+            window.onload = function() {
+                footerElement = document.getElementById("footer");
+                updateTimestamp();
+                setTimeout(refresh, refreshDelay);
+            }
+        </script>
+    </head>
+    <body>
+        <button class="clearBtn" type="button" onclick="clearLog()">清空日志! </button>
+
+        <div>
+            %user_device_infos%
+        </div>
+
+        
+
+
+        <button id="pauseBtnId" class="pauseBtn" type="button" onclick="pauseLog()">暂停! </button>
+        <!-- <button class="clearBtn" type="button" onclick="clearLog()">下载日志! </button> -->
+        <div id="tLogTable">
+            <table  style="table-layout: fixed" border="1" cellspacing="0" cellpadding="0" width="200">
+            <tbody id="content">
+                %page_content%
+            </tbody>
+        </table>
+        <div id="footer">
+        </div>
+        </div>
+        
+    </body>
+
+</html>
