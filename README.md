@@ -10,5 +10,7 @@
 
   ![image](https://github.com/12star9/Python-Tools/blob/master/xcode_build/tool-screenpot.gif)
 
+- iOS包体.ipa(包括.framework)重签名和动态库代码注入. 
+
 后续不断更新中......
 
