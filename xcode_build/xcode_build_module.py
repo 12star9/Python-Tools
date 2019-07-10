@@ -19,8 +19,31 @@ keychainPassword="123456789"
 mobileprovision_path="/Users/"+getpass.getuser()+"/Library/MobileDevice/Provisioning Profiles"
 
 class XCodeBuild(object):
-    
-    def __init__(self,xcodeProjectRootPath,infoPlistFilePath,isWorkSpace,targetName,configurationSet,certificateName,provisioning_profile_file,base_exportOptionPlist):
+    #自动重载
+    def __init__(self,*args):
+        if len(args)==1:
+            self.initTest(args[0])
+        elif len(args)==8:
+            self.initConfig(args[0],args[1],args[2],args[3],args[4],args[5],args[6],args[7])
+        pass
+
+    def initTest(self,xcodeProjectRootPath):
+        self.xcodeProjectRootPath = xcodeProjectRootPath
+
+    def initTestProject(self):
+        # 初始化
+        pbxproj=self.xcodeProjectRootPath+'/project_test.xcodeproj/project.pbxproj'
+        infoPlistPath=self.xcodeProjectRootPath+'/project_test/Info.plist'
+        self.project = XcodeProject.load(pbxproj)
+        targetsNames=self.project.get_targets_names()
+        for targetName in targetsNames:
+            self.project.get_configSet_By_Target(targetName)
+        print targetsNames
+        pass
+
+
+    def initConfig(self,xcodeProjectRootPath,infoPlistFilePath,isWorkSpace,targetName,configurationSet,certificateName,provisioning_profile_file,base_exportOptionPlist):
+        
         self.xcodeProjectRootPath = xcodeProjectRootPath
         self.infoPlistFilePath=infoPlistFilePath
         self.isWorkSpace=isWorkSpace
@@ -546,7 +569,13 @@ class XCodeBuild(object):
         self.updateProjectSettings()
         self.project.save()
         pass
-
+    def getAllBuildConfig(self):
+        pass
+    
+    # 转化.pbxproj文件数据，以便更可读！
+    def parsePbxprojFileData(self,output_json_file,pbxproj_path):
+        os.system('plutil -convert json -s -r -o %s %s'%(output_json_file,pbxproj_path))
+        pass
     def initProject(self):
         # 初始化
         pbxproj=self.xcodeProjectRootPath+'/project_test.xcodeproj/project.pbxproj'
@@ -587,4 +616,10 @@ class XCodeBuild(object):
         self.project.save()
         pass
         return
+
+
+if __name__=='__main__':
+    xcode_build=XCodeBuild("/Users/star.liao/Desktop/Git/Python-Tools/xcode_build/project_test")
+    xcode_build.initTestProject()
+    
 

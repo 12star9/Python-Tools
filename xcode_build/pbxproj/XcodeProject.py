@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import shutil
 import datetime
 from pbxproj.pbxextensions import *
@@ -17,6 +18,7 @@ class XcodeProject(PBXGenericObject, ProjectFiles, ProjectFlags, ProjectGroups):
             path = os.path.join(os.getcwd(), 'project.pbxproj')
 
         self._pbxproj_path = os.path.abspath(path)
+        #.xcodeproj项目根路径
         self._source_root = os.path.abspath(os.path.join(os.path.split(path)[0], '..'))
 
         # initialize the structure using the given tree
@@ -54,6 +56,31 @@ class XcodeProject(PBXGenericObject, ProjectFiles, ProjectFlags, ProjectGroups):
         if targets.__len__() > 0:
             return targets[0]
         return None
+    
+    def get_targets_names(self):
+        targets= self.objects.get_targets()
+        result=[]
+        for target_temp in targets:
+            result.append(target_temp.name)
+        return result
+    
+    def get_configSet_By_Target(self,target_name):
+        result=[]
+        temp_result= self.get_target_by_name(target_name)
+        targets= self.objects.get_targets()
+        configSets=[]
+        for target_temp in targets:
+            if target_temp.name==target_name:
+                configuration_list = self.objects[target_temp.buildConfigurationList]  
+                configSets=configuration_list['buildConfigurations']
+                break
+                pass  
+        for configSet_temp in configSets:
+            temp_Obj=self.objects[configSet_temp]
+            result.append(temp_Obj.name)     
+            pass
+        return result
+        pass
 
     def get_object(self, object_id):
         return self.objects[object_id]
@@ -61,5 +88,6 @@ class XcodeProject(PBXGenericObject, ProjectFiles, ProjectFlags, ProjectGroups):
     @classmethod
     def load(cls, path):
         import openstep_parser as osp
+        # tree即结构化的.pbxproj数据
         tree = osp.OpenStepDecoder.ParseFromFile(open(path, 'r'))
         return XcodeProject(tree, path)

@@ -151,39 +151,48 @@ class LayoutMainUI(object):
         pass
 
     def layout_main_ui(self):
-        self.choose_xcode_path_btn=tk.Button(self.root, text="选择Xcode工程路径",command=self.chooseXcodePathCallBack)
+        width_value=800
+        height_value=2
+        self.choose_xcode_path_btn=tk.Button(self.root, text="选择Xcode工程路径",command=self.chooseXcodePathCallBack,height=height_value,width=width_value)
+        self.choose_xcode_path_btn.pack()
+
         self.xcode_display_text=tk.StringVar()
         self.xcode_display_text.set('')
-        self.xcode_path_text=tk.Label(self.root,height=2,textvariable=self.xcode_display_text)
+        self.xcode_path_text=tk.Label(self.root,height=2,textvariable=self.xcode_display_text,width=width_value)
+        self.xcode_path_text.pack()
+
         self.mobileprosion_display_text=tk.StringVar()
         self.mobileprosion_display_text.set('')
         self.plist_display_text=tk.StringVar()
         self.plist_display_text.set('')
         self.mobileprosion_path_text=tk.Label(self.root,height=2,textvariable=self.mobileprosion_display_text)
         self.plist_path_text=tk.Label(self.root,height=2,textvariable=self.plist_display_text)
-        self.add_sdk_path_btn=tk.Button(self.root, text="添加SDK打包任务",command=self.clickCallBack)
-        self.target_build_list=tk.Listbox(self.root,width=750,selectmode=MULTIPLE,exportselection=False)
+        self.add_sdk_path_btn=tk.Button(self.root, text="添加SDK打包任务",command=self.clickCallBack,width=width_value)
+        self.add_sdk_path_btn.pack()
+        
+
+        self.target_build_list=tk.Listbox(self.root,selectmode=MULTIPLE,exportselection=False,width=width_value)
         self.sign_list=tk.Listbox(self.root,width=750,exportselection=False,height=4)
         for temp in self.sign_list_data:
             self.sign_list.insert(0,temp)
-        self.build_config_list=tk.Listbox(self.root,width=750,exportselection=False,height=2)
+        self.build_config_list=tk.Listbox(self.root,exportselection=False,height=2,width=width_value)
         self.build_list_data=['Debug','Release']
         for temp in self.build_list_data:
             self.build_config_list.insert(0,temp)
-        self.test_btn=tk.Button(self.root, text="开始打包",command=self.buildAllTaskCallBack)
-        self.choose_mobileprosion_btn=tk.Button(self.root, text="选择打包用的.mobileprosion_profile",command=self.chooseMobileProsionProfileCallBack)
-        self.choose_exportOptions_btn=tk.Button(self.root, text="选择打包用的exportOptions.plist",command=self.chooseExportOptionsInfoFileCallBack)
+        self.test_btn=tk.Button(self.root, text="开始打包",command=self.buildAllTaskCallBack,width=width_value)
+        self.choose_mobileprosion_btn=tk.Button(self.root, text="选择打包用的.mobileprosion_profile",command=self.chooseMobileProsionProfileCallBack,width=width_value)
+        self.choose_exportOptions_btn=tk.Button(self.root, text="选择打包用的exportOptions.plist",command=self.chooseExportOptionsInfoFileCallBack,width=width_value)
         self.result_display_msg=tk.StringVar()
         self.result_display_msg.set('')
         self.result_display_msg_Label=tk.Label(self.root,textvariable=self.result_display_msg,height=20)
         self.target_build_list.pack()
         self.sign_list.pack()
         self.build_config_list.pack()
-        self.xcode_path_text.pack()
+        
         self.mobileprosion_path_text.pack()
         self.plist_path_text.pack()
-        self.choose_xcode_path_btn.pack()
-        self.add_sdk_path_btn.pack()
+        
+        
         self.choose_mobileprosion_btn.pack()
         self.choose_exportOptions_btn.pack()
         self.test_btn.pack()
@@ -196,7 +205,7 @@ class LayoutMainUI(object):
     def gui_main(self):
         root = tk.Tk()
         root.title("iOS包体打包工具!")
-        root.geometry('1200x940')
+        root.geometry('840x600')
         root.resizable(width=True,height=True)
         self.root =root
         self.xcode_path=None
