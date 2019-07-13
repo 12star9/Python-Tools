@@ -65,6 +65,8 @@ class XCodeBuild(object):
         #根据包名更新exportOptions.plist文件信息
         #先复制一份，修改好用这份新的
         new_exportOption_plist= '%s_%s'%(self.app_display_name,self.app_bundle_id)+'_'+self.exportOptionPlist.split('/')[-1]
+        #这里拷贝到打包xcode工程根目录下
+        new_exportOption_plist=os.path.join(self.xcodeProjectRootPath,new_exportOption_plist)
         shutil.copyfile(self.exportOptionPlist,new_exportOption_plist)
         self.current_exportOption_plist=new_exportOption_plist
         cmd='/usr/libexec/PlistBuddy -c "Add :provisioningProfiles:%s string %s" %s'%(self.app_bundle_id,self.provisioning_profile,new_exportOption_plist)

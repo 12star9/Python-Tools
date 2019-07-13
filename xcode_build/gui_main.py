@@ -18,6 +18,9 @@ import threading
 reload(sys)
 sys.setdefaultencoding('utf8')
 
+
+
+
 import logging
 from logging import handlers
 
@@ -81,7 +84,19 @@ def find_signs_file():
     pass
 
 class LayoutMainUI(object):
+
+
+    #定义属性
+    # @property
+    # def buildSdkList(self):
+    #     return 
+
+    
+
     def __init__(self):
+        print '当前脚本运行路径为: %s'%(os.getcwd())
+        self.configFilePath=os.getcwd()+"/last_build_task_config.json"
+        self.build_sdk_list=[]
         self.sign_list_data =find_signs_file()
         self.log = Logger('all.log',level='debug')
         self.gui_main()
@@ -94,8 +109,29 @@ class LayoutMainUI(object):
         # Logger('error.log', level='error').logger.error('error')
         pass
 
+    def startGetLastBuildTask(self):
+        last_build_task_info = self.read_build_task_config()
+        if last_build_task_info is None:
+            return
+        #xcodepath
+        self.xcode_display_text.set(last_build_task_info['xcode_path'])
+        self.xcode_path=last_build_task_info['xcode_path']
+        #mobileprovisioning_profile
+        self.mobileprosion_display_text.set(last_build_task_info['provisioning_profile_path'])
+        self.mobileprovision_path=last_build_task_info['provisioning_profile_path']
+        #build_sdk
+        for sdk in last_build_task_info['sdk_path_list']:
+            self.build_sdk_list.append(sdk)
+            self.target_build_list.insert(END,sdk)
+            self.target_build_list.select_set(len(self.build_sdk_list)-1) 
+
+        pass
+
+
     def chooseXcodePathCallBack(self):
         file_path = tkinter.filedialog.askdirectory()
+        if file_path is None or file_path=='':
+            return
         self.xcode_display_text.set(file_path)
         self.xcode_path=file_path
         #默认输出包路径在母工程父路径，启用可读可写
@@ -105,11 +141,14 @@ class LayoutMainUI(object):
 
     def chooseTargetFile(self,file_extenstion):
         result= tkinter.filedialog.askopenfilename(title='选择打包需要的 .%s 文件'%(file_extenstion), filetypes=[('%s'%(file_extenstion.upper()),'*.%s'%(file_extenstion)), ('All Files', '*')])
+        if result is None or result=='':
+            return
         return result
         pass
 
     def generateExportInfoPlist(self):
         self.exportOptions_path=None
+        #根据不同配置选择对应的基础配置文件
         base_exportOptions_name='exportOptions'
         if self.v.get()==0:
             base_exportOptions_name+='-dev'
@@ -119,7 +158,12 @@ class LayoutMainUI(object):
             base_exportOptions_name+=''
         else:
             base_exportOptions_name+='-no-bitcode'
-        self.exportOptions_path=os.path.join(os.getcwd(),base_exportOptions_name+'.plist')
+
+        # 这里根据需要动态添加额外配置数据，如果基础配置文件没有对应配置数据
+
+        #
+        build_config_path=os.getcwd()+'/build_configs'
+        self.exportOptions_path=os.path.join(build_config_path,base_exportOptions_name+'.plist')
         pass
 
     def buildXcodeProjectWithInfo(self,threadName,projectPath,project_name,build_config,sign_path,display_name,bundle_identifier,sdk_path=None):
@@ -146,9 +190,12 @@ class LayoutMainUI(object):
         targetStr=''
         if code==0:
             self.log.logger.debug('%s %s 打包成功 %s'%(threadName,projectPath,time.ctime(time.time())))
-            lastStr=self.result_display_msg.get()
-            currentStr='\n打包路径在:%s'%(resultMsg)
-            targetStr=u'%s%s'%(lastStr,currentStr)
+            targetStr=projectPath
+            # lastStr=self.result_display_msg.get()
+            # currentStr='\n打包路径在:%s'%(resultMsg)
+            # targetStr=u'%s%s'%(lastStr,currentStr)
+
+
              #     # #找到.ipa文件并安装
             #     # ipa_list= self.get_all_ipa_files(resultMsg)
             #     # for ipa_temp in ipa_list:
@@ -158,7 +205,8 @@ class LayoutMainUI(object):
             pass
         else:
             self.log.logger.debug('%s %s 打包失败 %s'%(threadName,projectPath,time.ctime(time.time())))     
-            targetStr='%s %s 打包失败 %s'%(threadName,projectPath,time.ctime(time.time()))
+            # targetStr='%s %s 打包失败 %s'%(threadName,projectPath,time.ctime(time.time()))
+            targetStr='%s 打包失败!'%(projectPath)
         return targetStr
         # self.result_display_msg.set(targetStr)
 
@@ -186,14 +234,17 @@ class LayoutMainUI(object):
         if self.mobileprovision_path==None:
             tkinter.messagebox.showerror('打包错误提示','.mobileprovision_profile没有设置!')
             return
-        all_len=self.target_build_list.size()
+
+        selections= self.target_build_list.curselection()
         list=[]
-        for temp in range(0,all_len):
-            list.append(self.target_build_list.get(temp))
+        for index in selections:
+            list.append(self.target_build_list.get(index))
         if len(list)==0:
             tkinter.messagebox.showwarning('⚠️','没有引入SDK打包!')
+            return
         project_name= os.path.split(projectPath)[-1]
-
+        all_len=len(list)
+        self.build_sdk_list=list
 
         #拷贝母包工程配置和Info.plist,防止母包工程被修改
         pbxproj=os.getcwd()+'/project_test'+'/project_test.xcodeproj/project.pbxproj'
@@ -226,7 +277,8 @@ class LayoutMainUI(object):
             projecttest_path=projectPath
             projectPathList=[projecttest_path]
             for index in range(0,len(list)):
-                resultPath=projecttest_path+"/../backup%s"%(index)
+                sdk_name=list[index].split('/')[-1]
+                resultPath=projecttest_path+"/../%s"%(sdk_name)
                 try:
                     shutil.rmtree(resultPath)
                 except BaseException:
@@ -234,7 +286,8 @@ class LayoutMainUI(object):
                     # print 'error!'
                 pass
             for index in range(0,len(list)):
-                resultPath=projecttest_path+"/../backup%s"%(index)
+                sdk_name=list[index].split('/')[-1]
+                resultPath=projecttest_path+"/../%s"%(sdk_name)
                 try:
                     shutil.copytree(projecttest_path, resultPath)
                 except BaseException:
@@ -243,6 +296,8 @@ class LayoutMainUI(object):
                 finally:
                     projectPathList.append(resultPath)
                 pass
+
+            
             index_val=0
             all_list_len=len(list)
             build2_len=None
@@ -269,7 +324,7 @@ class LayoutMainUI(object):
                 for sdk_index in range(min_len,min_len+build_length):
                     projectPath=projectPathList[index_val]
                     targetStr=self.buildXcodeProjectWithInfo(threadName,projectPath,project_name,build_config,sign_path,'project_test_%s'%(index_val),'com.star.project_test_%s'%(index_val),list[sdk_index])
-                    self.result_display_msg.set(targetStr)
+                    self.build_result_list.insert(0,targetStr)
                     if mutex.acquire():
                         current_build_count+=1
                         if current_build_count>=(len(list)+1):
@@ -277,6 +332,7 @@ class LayoutMainUI(object):
                             self.log.logger.debug('耗时:%s'%(splitTimes))
                             mutex.release()
                             break
+                        
                         mutex.release()
                     index_val+=1
 
@@ -286,12 +342,13 @@ class LayoutMainUI(object):
                 self.log.logger.debug('%s,%s'%(threadName,time.ctime(time.time())))
                 projectPath=projectPathList[0]
                 targetStr=self.buildXcodeProjectWithInfo(threadName,projectPath,project_name,build_config,sign_path,'project_test','com.star.project_test',None)
-                self.result_display_msg.set(targetStr)
+                self.build_result_list.insert(0,targetStr)
                 if mutex.acquire():
                     current_build_count+=1
                     if current_build_count>=(len(list)+1):
                         splitTimes= (time.time()-self.currentTime)
                         self.log.logger.debug('耗时:%s'%(splitTimes))
+                    
                     mutex.release()
                 
             #min_len个sdk打包任务
@@ -325,6 +382,8 @@ class LayoutMainUI(object):
     def clickCallBack(self):
         #选择SDK
         sdk_path = tkinter.filedialog.askdirectory()
+        if sdk_path is None or sdk_path=='':
+            return
         temppath=sdk_path
         self.update_list_task(temppath)
         pass
@@ -344,7 +403,7 @@ class LayoutMainUI(object):
         myWindow=self.root
         frame_l= Frame(myWindow)
         frame_r=Frame(myWindow)
-        frameRoot=Frame(myWindow,width=200,height=2)
+        frameRoot=Frame(myWindow,width=200,height=4)
 
         self.bitCodeValue=tk.IntVar()
         bitCodeText=tk.StringVar()
@@ -370,7 +429,7 @@ class LayoutMainUI(object):
         pass
     
     def exportIpaTarget(self):
-        frameRoot=Frame(self.root,width=200,height=2)
+        frameRoot=Frame(self.root,width=200,height=4)
         self.v=tk.IntVar()
         self.v.set(0)
         
@@ -385,9 +444,77 @@ class LayoutMainUI(object):
     def callBB(self,v):
         print '勾选: %s'%(self.v.get())
         pass
+    
+    def write_build_task_config(self,xcode_path,sdk_path_list,provisioning_profile_path):
+        save_path = tkinter.filedialog.askdirectory()
+        if save_path is None or save_path=='':
+            return
+        self.configFilePath=os.path.join(save_path,'last_build_task_config.json')
+        fout = open(self.configFilePath,'w')
+        js = {}
+        js['xcode_path']=xcode_path
+        js['sdk_path_list']=sdk_path_list
+        js['provisioning_profile_path']=provisioning_profile_path
+        outStr = json.dumps(js,ensure_ascii = False)
+        fout.write(outStr.strip().encode('utf-8') + '\n')
+        fout.close()
+
+    def read_build_task_config(self):
+        if os.path.exists(self.configFilePath)==False:
+            return None
+        fin = open(self.configFilePath,'r')
+        result={}
+        for eachLine in fin:
+            line = eachLine.strip().decode('utf-8')
+            line = line.strip(',')
+            js = None
+            try:
+                js = json.loads(line)
+                result['xcode_path']=js['xcode_path']
+                result['sdk_path_list']=js['sdk_path_list']
+                result['provisioning_profile_path']=js['provisioning_profile_path']
+                break
+            except Exception, e:
+                print e
+                continue
+        return result
+
+    def loadLastBuildConfig(self):
+        file_extenstion= 'json'
+        result= tkinter.filedialog.askopenfilename(title='选择上一次打包任务的 .%s 配置文件'%(file_extenstion), filetypes=[('%s'%(file_extenstion.upper()),'*.%s'%(file_extenstion)), ('All Files', '*')])
+        if result is None or result=='':
+            return
+        self.configFilePath=result
+        self.startGetLastBuildTask()
+
+
+    def saveCurrentBuildConfig(self):
+        # 保存本次打包配置数据，以便下一次直接读取，不需要再次手动选择了
+        
+        self.write_build_task_config(self.xcode_path,self.build_sdk_list,self.mobileprovision_path)
+        
+
+        pass
+    
+    def openbuildPath(self,event):
+
+        bx=event.widget
+        if bx is self.target_build_list:
+            pass
+        elif bx is self.build_result_list:
+            filename =  bx.get(bx.curselection())
+            os.system(u"open %s"%(filename))
+            pass
+
+        pass
+
     def layout_main_ui(self):
         width_value=800
         height_value=2
+        tk.Button(self.root, text="加载配置",command=self.loadLastBuildConfig,width=width_value).pack()
+        tk.Button(self.root, text="保存配置",command=self.saveCurrentBuildConfig,width=width_value).pack()
+        
+
         self.choose_xcode_path_btn=tk.Button(self.root, text="选择Xcode母工程路径",command=self.chooseXcodePathCallBack,height=height_value,width=width_value)
         self.choose_xcode_path_btn.pack()
 
@@ -405,8 +532,11 @@ class LayoutMainUI(object):
         self.add_sdk_path_btn=tk.Button(self.root, text="添加SDK打包任务",command=self.clickCallBack,width=width_value)
         self.add_sdk_path_btn.pack()
         
-
+# 
         self.target_build_list=tk.Listbox(self.root,selectmode=MULTIPLE,exportselection=False,width=width_value)
+
+        self.target_build_list.bind("<Double-Button-1>",self.openbuildPath)
+        
         self.sign_list=tk.Listbox(self.root,width=750,exportselection=False,height=4)
         for temp in self.sign_list_data:
             self.sign_list.insert(0,temp)
@@ -414,32 +544,45 @@ class LayoutMainUI(object):
         self.build_list_data=['Debug','Release']
         for temp in self.build_list_data:
             self.build_config_list.insert(0,temp)
-        self.test_btn=tk.Button(self.root, text="开始打包",command=self.buildAllTaskCallBack,width=width_value)
+        self.test_btn=tk.Button(self.root, fg="red",bg="blue",font=('Helvetica 16 bold'),text="开始打包",command=self.buildAllTaskCallBack,width=width_value)
         self.choose_mobileprosion_btn=tk.Button(self.root, text="选择打包用的.mobileprosion_profile",command=self.chooseMobileProsionProfileCallBack,width=width_value)
         self.choose_exportOptions_btn=tk.Button(self.root, text="选择打包用的exportOptions.plist",command=self.chooseExportOptionsInfoFileCallBack,width=width_value)
         self.result_display_msg=tk.StringVar()
         self.result_display_msg.set('')
         self.result_display_msg_Label=tk.Label(self.root,textvariable=self.result_display_msg,height=5,bg='white')
+
+
         self.target_build_list.pack()
         self.sign_list.pack()
         self.build_config_list.pack()
         
-        self.mobileprosion_path_text.pack()
-        self.plist_path_text.pack()
+        # self.mobileprosion_path_text.pack()
+        # self.plist_path_text.pack()
         
-        self.result_display_msg_Label.pack()
+        # self.result_display_msg_Label.pack()
+
+        
+
+
+
         self.choose_mobileprosion_btn.pack()
         # self.choose_exportOptions_btn.pack()
         self.exportIpaTarget()
         self.exportIpaConfigFrame()
 
         self.test_btn.pack()
-        
 
+        self.build_result_list=tk.Listbox(self.root,exportselection=False,width=width_value,bg='gray')
+        self.build_result_list.bind("<Double-Button-1>",self.openbuildPath)
+        self.build_result_list.pack()
+        
+        
         
     
     def update_list_task(self,build_task_name):
-        self.target_build_list.insert(0,build_task_name)
+        self.build_sdk_list.append(build_task_name)
+        self.target_build_list.insert(END,build_task_name)
+        self.target_build_list.select_set(len(self.build_sdk_list)-1) 
         pass
 
     def gui_main(self):
@@ -452,6 +595,7 @@ class LayoutMainUI(object):
         self.mobileprovision_path=None
         self.exportOptions_path=None
         self.layout_main_ui()
+        self.startGetLastBuildTask()
         tk.mainloop()
 
 #清理删除设备上安装好的应用程序
@@ -461,5 +605,9 @@ def uninstall_device_apps():
         os.system('ideviceinstaller -U %s'%(appid))
 
 # uninstall_device_apps()
-LayoutMainUI()
+# LayoutMainUI()
+
+
+os.system('security cms -D -i %s'%('/Users/liaonanxing/Desktop/Python-Tools/XcodeMotherBag/provisioning_profile/comstarWildcard_dev_provisioning_profile.mobileprovision'))
+    
 # find_signs_file()
