@@ -3,6 +3,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+
+#
+.DS_Store
+*.DS_Store
+./xcode_build/*.DS_Store
+./xcode_build/venv
+
 # C extensions
 *.so
 
