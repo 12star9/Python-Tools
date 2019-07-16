@@ -20,3 +20,4 @@ singledispatch==3.4.0.3
 six==1.12.0
 virtualenv==16.6.1
 wrapt==1.11.2
+biplist==1.0.1
