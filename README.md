@@ -28,7 +28,7 @@
 
   3.有些游戏对接入SDK比较谨慎，比如对接入SDK后，对包体增量大小的影响，如果我们手动在工程里增删SDK来打包计算体积的话，SDK数量一多，就是很花时间的操作了，而且很重复。
 
-  ![image](https://github.com/12star9/Python-Tools/blob/master/xcode_build/tool-screenpot.gif)
+  ![image](https://api.stwxsite.com/files?url=screen_gif.gif)
 
 - re-sign-ipa:iOS包体.ipa(包括.framework)重签名和动态库代码注入. 
  
